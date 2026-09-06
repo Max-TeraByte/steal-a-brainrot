@@ -6,37 +6,63 @@
     <title>Web Analytics Demo</title>
 </head>
 <body>
-    <h1>Welcome to the site!</h1>
-    <p>Standard access logging is running in the background.</p>
+    <h1>SKIBIDI DOP,</h1>
+    <h2>tengo tu ip bro</h2>
+    
 
+    <!-- Firebase SDK Modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            query, 
+            where, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // TODO: Replace with your Firebase project configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBhmGKUgwQHIdBdG6gUGnEq7WplmwURdj0",
-  authDomain: "steal-a-brainrot1.firebaseapp.com",
-  projectId: "steal-a-brainrot1",
-  storageBucket: "steal-a-brainrot1.firebasestorage.app",
-  messagingSenderId: "725819563878",
-  appId: "1:725819563878:web:8128743ed6380d5524b2a7"
-};
+        // Replace this with your actual Firebase project configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Set the max threshold: If an IP appears this many times, set it to NULL
+        const IP_THRESHOLD = 3;
+
         async function logVisitor() {
             try {
-                // 1. Fetch the user's IP address
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipResponse.json();
-                const userIp = ipData.ip;
+                // 1. Fetch IP and Geolocation data
+                const geoResponse = await fetch('https://ipapi.co/json/');
+                const geoData = await geoResponse.json();
+                const userIp = geoData.ip;
 
-                // 2. Write the IP and metadata to Firestore
-                await addDoc(collection(db, "visitor_logs"), {
-                    ip_address: userIp,
+                // 2. Query Firestore to check if this IP address already exists in visitor_logs
+                const logsRef = collection(db, "visitor_logs");
+                const q = query(logsRef, where("ip_address", "==", userIp));
+                const querySnapshot = await getDocs(q);
+
+                // If logged occurrences >= IP_THRESHOLD, set finalIp to null
+                const finalIp = querySnapshot.size >= IP_THRESHOLD ? null : userIp;
+
+                // 3. Write data to Firestore
+                await addDoc(logsRef, {
+                    ip_address: finalIp,
+                    location: {
+                        city: geoData.city || null,
+                        region: geoData.region || null,
+                        country: geoData.country_name || null,
+                        postal: geoData.postal || null
+                    },
                     user_agent: navigator.userAgent,
                     timestamp: serverTimestamp(),
                     page_url: window.location.href
@@ -48,7 +74,6 @@ const firebaseConfig = {
             }
         }
 
-        // Execute the function when the page loads
         window.onload = logVisitor;
     </script>
 </body>
